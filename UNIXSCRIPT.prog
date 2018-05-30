@@ -1,0 +1,93 @@
+#!/bin/bash
+
+source /u01/jde920/e920/PDH/bin/config.sh
+
+export PATH=$javahome:$PATH
+
+x1=$(sed '1 ! d' $ilinktop/bin/OldDocid.txt)
+
+x1=`expr $x1 + 1`
+
+java -jar $ilinktop/bin/oracle.ucm.fa_client_11.1.1.jar SearchTool --url=$ucmurl --username=$ucmuser --password=$ucmpasswd --dDocTitle%=$ucmzipfile --dID">="$x1 --fields=dID --defaultFields=false --quiet ls *.exe > $ilinktop/bin/PublishDetails.txt
+
+res=$?
+
+if [ "$res" -eq "0" ]; then
+ 
+ sed -n '3p' $ilinktop/bin/PublishDetails.txt > $ilinktop/bin/Docid.txt
+ 
+ x1="0"
+ 
+ y1="0"
+ 
+ x1=$(sed '1 ! d' $ilinktop/bin/Docid.txt)
+ 
+ echo "Doc ID: " $x1
+ 
+ y1=$(sed '1 ! d' $ilinktop/bin/OldDocid.txt)
+ 
+ echo "Old Doc ID: " $y1
+ 
+	 if [ "$x1" -gt "$y1" ]
+	   then
+	   
+	   z1=`cat $ilinktop/bin/PublishDetails.txt | wc -l`
+	   
+	   
+	   z1=`expr $z1 - 1` 
+	   
+	   
+	   j=3
+	   while [ $j -le $z1 ]
+	   do
+		
+	    f1=`sed -n $j'p' $ilinktop/bin/PublishDetails.txt`
+		
+		
+		java -jar $ilinktop/bin/oracle.ucm.fa_client_11.1.1.jar DownloadTool --url=$ucmurl --username=$ucmuser --password=$ucmpasswd --outputFile="$f1.zip" --dID=$f1 --quiet
+	   
+		mv $f1.zip $ilinktop/Incoming
+
+		
+		cd $ilinktop/Incoming
+		chmod 777 $f1.zip;
+
+		unzip $f1.zip -d $ilinktop/Incoming
+
+		mv $f1.zip $ilinktop/Completed/Zipfiles
+
+		cd $ilinktop/Incoming
+
+
+        for i in ITEM_*.xml; do 
+	        chmod 777 $i
+			mv "$i" "${f1}_${i}";
+
+			j=`expr $j + 1`
+		done
+	   
+		cd $ilinktop/bin
+
+		sed -n '1p' $ilinktop/bin/Docid.txt > $ilinktop/bin/OldDocid.txt
+	   
+
+        done
+	   
+	 elif [ "$x1" == "0 of approximately 0 items that matched search criteria were returned." ]; 
+	   then 
+	  
+	   echo "Spoke System Name is invalid or No Updates for the Spoke System"
+	     
+	 else
+	  
+	   echo " This Outbound Publish file is already Downloaded"
+	   
+	 fi
+	 
+else
+
+ echo "Verify the Java Search Command Parameter values Make sure you have to enter the valid parameter values"
+ 
+ exit 1
+ 
+fi
